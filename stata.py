@@ -14,16 +14,16 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 
 # ---------------- Page Config ----------------
-st.set_page_config(page_title="Pro ML Platform", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Pro ML Platform", layout="wide")
 
 # ---------------- Sidebar ----------------
-st.sidebar.title("🤖 Pro ML Platform")
+st.sidebar.title("Pro ML Platform")
 st.sidebar.markdown("Upload Dataset → Explore → Visualize → Train & Recommend")
 
-uploaded_file = st.sidebar.file_uploader("📁 Upload Dataset", type=["csv", "xlsx"])
+uploaded_file = st.sidebar.file_uploader("Upload Dataset", type=["csv", "xlsx"])
 
 if uploaded_file is None:
-    st.info("⬅️ Upload a dataset from the sidebar to get started")
+    st.info("Upload a dataset from the sidebar to get started")
     st.stop()
 
 # ---------------- Load Data ----------------
@@ -33,14 +33,14 @@ else:
     df = pd.read_excel(uploaded_file)
 
 # ---------------- Tabs ----------------
-tab1, tab2 = st.tabs(["📊 Data Overview", "🧠 Visualization & ML"])
+tab1, tab2 = st.tabs(["Data Overview", "Visualization & ML"])
 
 # ================= TAB 1: Data Overview =================
 with tab1:
-    st.subheader("🔍 Data Preview")
+    st.subheader("Data Preview")
     st.dataframe(df.head(), use_container_width=True)
 
-    st.subheader("🧾 Column Information")
+    st.subheader("Column Information")
     desc_df = pd.DataFrame({
         "Column": df.columns,
         "Type": df.dtypes.astype(str),
@@ -51,13 +51,13 @@ with tab1:
 
     num_cols = df.select_dtypes(include=np.number).columns.tolist()
     if num_cols:
-        st.subheader("📐 Numerical Statistics")
+        st.subheader("Numerical Statistics")
         stats_df = df[num_cols].describe().T
         st.dataframe(stats_df.round(2), use_container_width=True)
 
 # ================= TAB 2: Visualization & ML =================
 with tab2:
-    st.subheader("📈 Interactive Visualization")
+    st.subheader("Interactive Visualization")
 
     num_cols = df.select_dtypes(include=np.number).columns.tolist()
     c1, c2, c3, c4 = st.columns(4)
@@ -92,11 +92,11 @@ with tab2:
 
     # ---------------- Machine Learning ----------------
     st.markdown("---")
-    st.subheader("🧠 Machine Learning & Model Recommendation")
+    st.subheader("Machine Learning & Model Recommendation")
 
-    target = st.selectbox("🎯 Target Column", df.columns)
+    target = st.selectbox("Target Column", df.columns)
     features = st.multiselect(
-        "📌 Feature Columns",
+        "Feature Columns",
         [c for c in df.columns if c != target],
         default=[c for c in df.columns if c != target]
     )
@@ -104,11 +104,9 @@ with tab2:
     X = df[features].copy()
     y = df[target]
 
-    # Encode target if needed
     if y.nunique() == 2 and y.dtype == object:
         y = LabelEncoder().fit_transform(y)
 
-    # Handle missing values
     for col in X.columns:
         if np.issubdtype(X[col].dtype, np.number):
             X[col].fillna(X[col].mean(), inplace=True)
@@ -134,40 +132,40 @@ with tab2:
     }
 
     metric = st.selectbox(
-        "📏 Metric to Recommend Best Model",
+        "Metric to Recommend Best Model",
         ["accuracy", "f1", "recall", "precision"]
     )
 
-    if st.button("🚀 Train & Recommend Best Model"):
+    if st.button("Train & Recommend Best Model"):
         best_score = 0
         best_model = None
         best_name = ""
 
-        st.markdown("### 🔍 Cross Validation Results")
+        st.markdown("Cross Validation Results")
         for name, clf in models.items():
             pipe = Pipeline([("prep", preprocessor), ("model", clf)])
             scores = cross_val_score(pipe, X_train, y_train, cv=3, scoring=metric)
             mean_score = scores.mean()
-            st.write(f"**{name}** → {mean_score:.2%}")
+            st.write(f"{name} → {mean_score:.2%}")
 
             if mean_score > best_score:
                 best_score = mean_score
                 best_model = pipe
                 best_name = name
 
-        st.success(f"🧠 Recommended Model based on {metric.upper()}: **{best_name}**")
+        st.success(f"Recommended Model based on {metric.upper()}: {best_name}")
 
         best_model.fit(X_train, y_train)
         preds = best_model.predict(X_test)
 
-        st.metric("✅ Test Accuracy", f"{accuracy_score(y_test, preds):.2%}")
+        st.metric("Test Accuracy", f"{accuracy_score(y_test, preds):.2%}")
 
-        st.markdown("### 📊 Confusion Matrix")
+        st.markdown("Confusion Matrix")
         st.plotly_chart(px.imshow(confusion_matrix(y_test, preds), text_auto=True))
 
-        st.markdown("### 📄 Classification Report")
+        st.markdown("Classification Report")
         st.text(classification_report(y_test, preds))
 
 # ---------------- Footer ----------------
 st.markdown("---")
-st.caption("Built with ❤️ using Streamlit | Pro ML Platform")
+st.caption("Built with Streamlit | Pro ML Platform")
