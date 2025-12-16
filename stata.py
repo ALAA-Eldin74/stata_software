@@ -40,17 +40,68 @@ tab1, tab2 = st.tabs(["Data Overview", "Visualization & ML"])
 
 # ================= TAB 1 =================
 with tab1:
-    st.subheader("Data Preview")
-    st.dataframe(df.head(), use_container_width=True)
+    st.subheader("Dataset Overview & Statistics")
 
-    st.subheader("Dataset Info")
-    info_df = pd.DataFrame({
-        "Column": df.columns,
-        "Type": df.dtypes.astype(str),
-        "Missing": df.isnull().sum(),
-        "Unique": df.nunique()
-    })
-    st.dataframe(info_df, use_container_width=True)
+    # ---- Explanation ----
+    st.info("""
+    📊 **Statistical Description**
+    
+    - Numerical Statistics: Mean, Std, Min, Max, Quartiles  
+    - Categorical Statistics: Unique values, Most frequent value  
+    - Helps understand data distribution before Visualization & ML
+    """)
+
+    # ---- Buttons ----
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        show_preview = st.button("Show Data Preview")
+    with col2:
+        show_info = st.button("Show Dataset Info")
+    with col3:
+        show_num_stats = st.button("Numerical Statistics")
+    with col4:
+        show_cat_stats = st.button("Categorical Statistics")
+
+    # ---- Data Preview ----
+    if show_preview:
+        st.subheader("Data Preview")
+        st.dataframe(df.head(), use_container_width=True)
+
+    # ---- Dataset Info ----
+    if show_info:
+        st.subheader("Dataset Info")
+        info_df = pd.DataFrame({
+            "Column": df.columns,
+            "Type": df.dtypes.astype(str),
+            "Missing Values": df.isnull().sum(),
+            "Unique Values": df.nunique()
+        })
+        st.dataframe(info_df, use_container_width=True)
+
+    # ---- Numerical Statistics ----
+    if show_num_stats:
+        st.subheader("Numerical Statistical Summary")
+        num_desc = df.select_dtypes(include=np.number).describe().T
+        st.dataframe(num_desc, use_container_width=True)
+
+    # ---- Categorical Statistics ----
+    if show_cat_stats:
+        st.subheader("Categorical Statistical Summary")
+        cat_cols = df.select_dtypes(exclude=np.number).columns
+
+        cat_summary = []
+        for col in cat_cols:
+            cat_summary.append({
+                "Column": col,
+                "Count": df[col].count(),
+                "Unique": df[col].nunique(),
+                "Most Frequent": df[col].mode()[0] if not df[col].mode().empty else None,
+                "Frequency": df[col].value_counts().iloc[0] if not df[col].value_counts().empty else None
+            })
+
+        cat_df = pd.DataFrame(cat_summary)
+        st.dataframe(cat_df, use_container_width=True)
 
 # ================= TAB 2 =================
 with tab2:
@@ -60,7 +111,7 @@ with tab2:
 
     x_col = st.selectbox("X Axis", df.columns)
     y_col = st.selectbox("Y Axis", num_cols if num_cols else df.columns)
-    chart = st.selectbox("Chart", ["Scatter", "Bar", "Box", "Histogram", "Pie"])
+    chart = st.selectbox("Chart Type", ["Scatter", "Bar", "Box", "Histogram", "Pie"])
 
     if chart == "Scatter":
         fig = px.scatter(df, x=x_col, y=y_col)
@@ -73,7 +124,8 @@ with tab2:
     else:
         fig = px.pie(df, names=x_col)
 
-    st.plotly_chart(fig, use_container_width=True)
+    if st.button("Generate Chart"):
+        st.plotly_chart(fig, use_container_width=True)
 
     # ---------------- ML ----------------
     st.markdown("---")
@@ -89,7 +141,7 @@ with tab2:
     X = df[features].copy()
     y = df[target]
 
-    # ---------- Detect Problem Type ----------
+    # ---- Detect Problem Type ----
     if y.dtype == object or y.nunique() <= 10:
         problem_type = "classification"
     else:
@@ -97,18 +149,18 @@ with tab2:
 
     st.info(f"Detected Problem Type: **{problem_type.upper()}**")
 
-    # ---------- Encode target ----------
+    # ---- Encode target ----
     if problem_type == "classification" and y.dtype == object:
         y = LabelEncoder().fit_transform(y)
 
-    # ---------- Missing Values ----------
+    # ---- Handle Missing Values ----
     for col in X.columns:
         if np.issubdtype(X[col].dtype, np.number):
             X[col].fillna(X[col].mean(), inplace=True)
         else:
             X[col].fillna(X[col].mode()[0], inplace=True)
 
-    # ---------- Split ----------
+    # ---- Split ----
     X_train, X_test, y_train, y_test = train_test_split(
         X, y,
         test_size=0.25,
@@ -124,7 +176,7 @@ with tab2:
         ("cat", OneHotEncoder(handle_unknown="ignore"), cat_features)
     ])
 
-    # ---------- Models ----------
+    # ---- Models ----
     if problem_type == "classification":
         models = {
             "Logistic Regression": LogisticRegression(max_iter=1000),
@@ -142,7 +194,7 @@ with tab2:
         metric = "r2"
         cv = 3
 
-    # ---------- Train ----------
+    # ---- Train ----
     if st.button("Train & Compare Models"):
         results = []
         best_score = -999
@@ -171,7 +223,7 @@ with tab2:
 
         st.success(f"Best Model: **{best_name}**")
 
-        # ---------- Evaluation ----------
+        # ---- Evaluation ----
         best_model.fit(X_train, y_train)
         preds = best_model.predict(X_test)
 
@@ -183,35 +235,35 @@ with tab2:
             st.metric("R2 Score", f"{r2_score(y_test, preds):.3f}")
             st.metric("RMSE", f"{mean_squared_error(y_test, preds, squared=False):.3f}")
 
-        # ---------- Feature Importance ----------
-if "Random Forest" in best_name:
-    model = best_model.named_steps["model"]
+        # ---- Feature Importance ----
+        if "Random Forest" in best_name:
+            model = best_model.named_steps["model"]
 
-    cat_feature_names = []
-    if cat_features:
-        cat_feature_names = list(
-            best_model.named_steps["prep"]
-            .named_transformers_["cat"]
-            .get_feature_names_out(cat_features)
-        )
+            cat_feature_names = []
+            if cat_features:
+                cat_feature_names = list(
+                    best_model.named_steps["prep"]
+                    .named_transformers_["cat"]
+                    .get_feature_names_out(cat_features)
+                )
 
-    feature_names = num_features + cat_feature_names
+            feature_names = num_features + cat_feature_names
 
-    imp_df = pd.DataFrame({
-        "Feature": feature_names,
-        "Importance": model.feature_importances_
-    }).sort_values("Importance", ascending=False)
+            imp_df = pd.DataFrame({
+                "Feature": feature_names,
+                "Importance": model.feature_importances_
+            }).sort_values("Importance", ascending=False)
 
-    st.subheader("Feature Importance")
-    st.plotly_chart(
-        px.bar(
-            imp_df.head(15),
-            x="Importance",
-            y="Feature",
-            orientation="h"
-        ),
-        use_container_width=True
-    )
+            st.subheader("Feature Importance")
+            st.plotly_chart(
+                px.bar(
+                    imp_df.head(15),
+                    x="Importance",
+                    y="Feature",
+                    orientation="h"
+                ),
+                use_container_width=True
+            )
 
 # ---------------- Footer ----------------
 st.markdown("---")
