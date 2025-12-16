@@ -184,20 +184,34 @@ with tab2:
             st.metric("RMSE", f"{mean_squared_error(y_test, preds, squared=False):.3f}")
 
         # ---------- Feature Importance ----------
-        if "Random Forest" in best_name:
-            model = best_model.named_steps["model"]
-            feature_names = (
-                num_features +
-                list(best_model.named_steps["prep"]
-                     .named_transformers_["cat"]
-                     .get_feature_names_out(cat_features))
-            imp_df = pd.DataFrame({
-                "Feature": feature_names,
-                "Importance": model.feature_importances_
-            }).sort_values("Importance", ascending=False)
+if "Random Forest" in best_name:
+    model = best_model.named_steps["model"]
 
-            st.subheader("Feature Importance")
-            st.plotly_chart(px.bar(imp_df.head(15), x="Importance", y="Feature", orientation="h"))
+    cat_feature_names = []
+    if cat_features:
+        cat_feature_names = list(
+            best_model.named_steps["prep"]
+            .named_transformers_["cat"]
+            .get_feature_names_out(cat_features)
+        )
+
+    feature_names = num_features + cat_feature_names
+
+    imp_df = pd.DataFrame({
+        "Feature": feature_names,
+        "Importance": model.feature_importances_
+    }).sort_values("Importance", ascending=False)
+
+    st.subheader("Feature Importance")
+    st.plotly_chart(
+        px.bar(
+            imp_df.head(15),
+            x="Importance",
+            y="Feature",
+            orientation="h"
+        ),
+        use_container_width=True
+    )
 
 # ---------------- Footer ----------------
 st.markdown("---")
