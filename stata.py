@@ -267,4 +267,4 @@ with tab2:
 
 # ---------------- Footer ----------------
 st.markdown("---")
-st.caption("Pro ML Platform | Streamlit")
+st.caption("Pro ML Platform | Streamlit") 
